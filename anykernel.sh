@@ -4,23 +4,24 @@
 ## AnyKernel setup
 # begin properties
 properties() { '
-kernel.string=ExampleKernel by osm0sis @ xda-developers
+kernel.string=RZ Kernel for Exynos 9810 devices
 do.devicecheck=1
 do.modules=0
 do.systemless=1
 do.cleanup=1
 do.cleanuponabort=0
-device.name1=maguro
-device.name2=toro
-device.name3=toroplus
-device.name4=tuna
-device.name5=
-supported.versions=
+device.name1=starlte
+device.name2=starltexx
+device.name3=star2lte
+device.name4=star2ltexx
+device.name5=crownlte
+device.name6=crownltexx
+supported.versions=10
 supported.patchlevels=
 '; } # end properties
 
 # shell variables
-block=/dev/block/platform/omap/omap_hsmmc.0/by-name/boot;
+block=/dev/block/platform/11120000.ufs/by-name/BOOT;
 is_slot_device=0;
 ramdisk_compression=auto;
 
@@ -39,25 +40,21 @@ set_perm_recursive 0 0 750 750 $ramdisk/init* $ramdisk/sbin;
 ## AnyKernel install
 dump_boot;
 
-# begin ramdisk changes
+ui_print "Remounting /vendor";
+mount -o remount,rw /vendor;
 
-# init.rc
-backup_file init.rc;
-replace_string init.rc "cpuctl cpu,timer_slack" "mount cgroup none /dev/cpuctl cpu" "mount cgroup none /dev/cpuctl cpu,timer_slack";
+if [ ! -e /vendor/etc/fstab.samsungexynos9810~ ]; then
+	ui_print "Backing up vendor fstab";
+	backup_file /vendor/etc/fstab.samsungexynos9810;
+fi;
 
-# init.tuna.rc
-backup_file init.tuna.rc;
-insert_line init.tuna.rc "nodiratime barrier=0" after "mount_all /fstab.tuna" "\tmount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/userdata /data remount nosuid nodev noatime nodiratime barrier=0";
-append_file init.tuna.rc "bootscript" init.tuna;
+ui_print "Patching vendor fstab";
+patch_fstab /vendor/etc/fstab.samsungexynos9810 /data ext4 flags "forceencrypt=footer" "encryptable=footer";
 
-# fstab.tuna
-backup_file fstab.tuna;
-patch_fstab fstab.tuna /system ext4 options "noatime,barrier=1" "noatime,nodiratime,barrier=0";
-patch_fstab fstab.tuna /cache ext4 options "barrier=1" "barrier=0,nomblk_io_submit";
-patch_fstab fstab.tuna /data ext4 options "data=ordered" "nomblk_io_submit,data=writeback";
-append_file fstab.tuna "usbdisk" fstab;
+ui_print "Copying vendor script";
+cp -f $home/vendor/etc/init/init.services.rc /vendor/etc/init;
 
-# end ramdisk changes
+mv -f $home/dtb.img $split_img/extra;
 
 write_boot;
 ## end install
